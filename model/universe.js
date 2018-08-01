@@ -1,54 +1,77 @@
+const MIN_SNAP_DISTANCE = 7;
+
 class Universe {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.context = canvas.getContext('2d');
+  constructor() {
     this.particles = [];
-    this.showGridLines = false;
+  }
+
+  width() {
+    return drawArea.clientWidth;
+  }
+
+  height() {
+    return drawArea.clientHeight;
   }
 
   addParticle(particle) {
+    var snapToParticleVertical = this.findSnapToParticle('x', particle.x);
+    if (snapToParticleVertical != null) {
+      particle.x = null;
+      particle.xAnchorParticle = snapToParticleVertical;
+    }
+    
+    var snapToParticleHorizontal = this.findSnapToParticle('y', particle.y);
+    if (snapToParticleHorizontal != null) {
+      particle.y = null;
+      particle.yAnchorParticle = snapToParticleHorizontal;
+    }
+    
     this.particles.push(particle);
+    
+    particle.move();
   }
 
   deleteParticle(particle) {
     // TODO
   }
-  
+
   setGridLines(isOn) {
     this.showGridLines = isOn;
     this.draw();
   }
+
+  // --------------------- GRID LINES ----------------------
+
+  dragging(dragPoint) {
+    this.draggingHilightGridLine('x', (p,s) => p.gridLineVerticalSelect(s), dragPoint.x);
+    this.draggingHilightGridLine('y', (p,s) => p.gridLineHorizontalSelect(s), dragPoint.y);
+  }
+
+  draggingHilightGridLine(xy, selectLine, mouseXY) {
+    // First, un-select all lines
+    this.particles.forEach(p => selectLine(p, false));
+
+    var snapToParticle = this.findSnapToParticle(xy, mouseXY);
+    
+    if (snapToParticle != null)
+      selectLine(snapToParticle, true);
+  }
   
-  draw() {
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  findSnapToParticle(xy, mouseXY) {
+    var ordered = _.sortBy(this.particles, p => Math.abs(p[xy] - mouseXY));
+    var closest = _.first(ordered);
+
+    if (closest != undefined && Math.abs(closest[xy] - mouseXY) <= MIN_SNAP_DISTANCE)
+      return closest;
     
-    this.particles.forEach(x => x.draw());
-    
-    if (this.showGridLines)
-      this.drawGridLines();
+    return null;
   }
 
-  drawGridLines() {
-    this.context.strokeStyle = 'lime';
-    this.context.setLineDash([3, 2]);
-
-    this.particles.forEach(x => {
-      this.drawVerticalGridLine(x);
-      this.drawHorizontalGridLine(x);
-    });
+  showGridLines() {
+    this.particles.forEach(p => p.showGridLines());
   }
 
-  drawVerticalGridLine(particle) {
-    this.context.beginPath();
-    this.context.moveTo(particle.x, 0);
-    this.context.lineTo(particle.x, this.canvas.height);
-    this.context.stroke();
-  }
-
-  drawHorizontalGridLine(particle) {
-    this.context.beginPath();
-    this.context.moveTo(0, particle.y);
-    this.context.lineTo(this.canvas.width, particle.y);
-    this.context.stroke();
+  hideGridLines() {
+    this.particles.forEach(p => p.hideGridLines());
   }
 }
